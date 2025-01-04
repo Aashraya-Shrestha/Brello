@@ -1,0 +1,67 @@
+﻿@page "/signup"
+@using Brello.Services;
+@using Brello.Models;
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<h3>Sign Up</h3>
+
+<form @onsubmit="HandleSignup">
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" @bind="user.Username" />
+        <div class="form-text">We'll never share your email with anyone else.</div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-control" @bind="user.Password" />
+    </div>
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="exampleCheck1" />
+        <label class="form-check-label" for="exampleCheck1">Check me out</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Signup</button>
+    <a href="/login">Login!</a>
+</form>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
+@code {
+    private User user = new User();
+    private string? errorMessage;
+
+    private async Task HandleSignup()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(user.Username) || string.IsNullOrWhiteSpace(user.Password))
+            {
+                errorMessage = "Username and Password cannot be empty.";
+                return;
+            }
+
+            // Call the RegisterAsync method in AuthService
+            var success = await AuthService.RegisterAsync(user.Username, user.Password);
+
+            if (success)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = "Username already exists. Please try again with a different username.";
+                Console.WriteLine("Username already exists.");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+}

@@ -1,0 +1,101 @@
+﻿@page "/transactions"
+@using Brello.Models;
+@using Brello.Services;
+@inject Brello.Services.TransactionService TransactionService
+
+<h3>Transactions</h3>
+
+<form @onsubmit="HandleTransactionSubmit">
+    <div class="mb-3">
+        <label for="transactionAmount" class="form-label">Amount</label>
+        <input type="number" class="form-control" id="transactionAmount" @bind="transactionModel.Amount">
+    </div>
+    <div class="mb-3">
+        <label for="transactionDescription" class="form-label">Remarks</label>
+        <input type="text" class="form-control" id="transactionDescription" @bind="transactionModel.Description">
+    </div>
+    <div class="mb-3">
+        <label for="transactionType" class="form-label">Transaction Type</label>
+        <select class="form-select" id="transactionType" @bind="transactionModel.TransactionType">
+ 
+            <option value="Credit">Credit</option>
+            <option value="Outflow">Debit</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="transactionDate" class="form-label">Transaction Date</label>
+        <InputDate id="transactionDate" class="form-control" @bind-Value="transactionModel.TransactionDate" />
+    </div>
+    <button type="submit" class="btn btn-primary mb-4">Add Transaction</button>
+</form>
+
+<h4>Transaction History</h4>
+@if (transactions != null && transactions.Count > 0)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Remarks</th>
+                <th>Amount</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var transaction in transactions)
+            {
+                <tr>
+                    <td>@transaction.TransactionDate.ToString("yyyy-MM-dd")</td>
+                    <td>@transaction.Description</td>
+                    <td>@transaction.Amount</td>
+                    <td>@transaction.TransactionType</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteTransaction(transaction.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No transactions found.</p>
+}
+
+@code {
+    private Transaction transactionModel = new Transaction();
+    private List<Transaction> transactions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        transactions = await TransactionService.GetTransactionsAsync();
+    }
+
+    private async Task HandleTransactionSubmit()
+    {
+        // Add the transaction to the database
+        await TransactionService.AddTransactionAsync(
+            transactionModel.Amount,
+            transactionModel.Description,
+            transactionModel.TransactionType,
+            transactionModel.TransactionDate);
+
+        // Add the transaction to the in-memory list
+        transactions.Add(new Transaction
+        {
+            Amount = transactionModel.Amount,
+            Description = transactionModel.Description,
+            TransactionType = transactionModel.TransactionType,
+            TransactionDate = transactionModel.TransactionDate
+        });
+
+        // Reset the form
+        transactionModel = new Transaction();
+    }
+
+    private async Task DeleteTransaction(int transactionId)
+    {
+        await TransactionService.DeleteTransactionAsync(transactionId);
+        transactions = await TransactionService.GetTransactionsAsync();
+    }
+}

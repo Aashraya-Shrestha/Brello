@@ -1,0 +1,51 @@
+﻿@page "/login"
+@using Brello.Services;
+@using Brello.Models;
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<h3>Login</h3>
+
+<form @onsubmit="HandleLogin">
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" @bind="user.Username">
+        <div class="form-text">We'll never share your email with anyone else.</div>
+    </div>
+    <div class="mb-3">
+        <label for="exampleInputPassword1" class="form-label">Password</label>
+        <input type="password" class="form-control" id="exampleInputPassword1" @bind="user.Password">
+    </div>
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="exampleCheck1">
+        <label class="form-check-label" for="exampleCheck1">Check me out</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+    <a href="/signup">Signup!</a>
+</form>
+
+@code {
+    private User user = new User(); // Using the User class directly
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(user.Username) || string.IsNullOrWhiteSpace(user.Password))
+        {
+            // Handle invalid input, e.g., show an error message or a validation summary
+            errorMessage = "Please enter both username and password.";
+            return;
+        }
+
+        var loggedInUser = await AuthService.LoginAsync(user.Username, user.Password);
+        if (loggedInUser != null)
+        {
+            Navigation.NavigateTo("/"); // Redirect to the home page after successful login
+        }
+        else
+        {
+            errorMessage = "Invalid username or password.";
+            
+        }
+    }
+}
