@@ -1,0 +1,212 @@
+﻿@page "/transactionDetails"
+@using Brello.Models;
+@using Brello.Services;
+@inject Brello.Services.TransactionService TransactionService
+
+<div class="container mt-5">
+    <h3 class="text-center mb-4">Transaction Details</h3>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <input type="text"
+                   class="form-control"
+                   placeholder="Search by description or amount..."
+                   value="@searchQuery"
+                   @oninput="OnSearchInputChange" />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select"
+                    value="@selectedTag"
+                    @onchange="OnTagFilterChange">
+                <option value="">All Tags</option>
+                @foreach (var tag in uniqueTags)
+                {
+                    <option value="@tag">@tag</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select"
+                    value="@selectedDateFilter"
+                    @onchange="OnDateFilterChange">
+                <option value="All Dates">All Dates</option>
+                <option value="Last3Days">Last 3 Days</option>
+                <option value="ThisWeek">This Week</option>
+                <option value="ThisMonth">This Month</option>
+                <option value="Past3Months">Past 3 Months</option>
+            </select>
+        </div>
+    </div>
+
+    <h4 class="text-success">Credit Transactions</h4>
+    @if (filteredCreditTransactions != null && filteredCreditTransactions.Count > 0)
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Date</th>
+                        <th>Remarks</th>
+                        <th>Amount</th>
+                        <th>Tag</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var transaction in filteredCreditTransactions)
+                    {
+                        <tr>
+                            <td>@transaction.TransactionDate.ToString("yyyy-MM-dd")</td>
+                            <td>@transaction.Description</td>
+                            <td>@transaction.Amount.ToString("0.00")</td>
+                            <td>@transaction.Tag</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => DeleteTransaction(transaction.Id)">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="text-muted">No credit transactions found.</p>
+    }
+
+    <h4 class="text-danger mt-4">Debit Transactions</h4>
+    @if (filteredDebitTransactions != null && filteredDebitTransactions.Count > 0)
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-danger">
+                    <tr>
+                        <th>Date</th>
+                        <th>Remarks</th>
+                        <th>Amount</th>
+                        <th>Tag</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var transaction in filteredDebitTransactions)
+                    {
+                        <tr>
+                            <td>@transaction.TransactionDate.ToString("yyyy-MM-dd")</td>
+                            <td>@transaction.Description</td>
+                            <td>@transaction.Amount.ToString("0.00")</td>
+                            <td>@transaction.Tag</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => DeleteTransaction(transaction.Id)">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="text-muted">No debit transactions found.</p>
+    }
+</div>
+
+@code {
+    private string searchQuery = string.Empty;
+    private string selectedTag = string.Empty;
+    private string selectedDateFilter = "All Dates";
+
+    private List<Transaction> creditTransactions = new();
+    private List<Transaction> debitTransactions = new();
+
+    private List<Transaction> filteredCreditTransactions = new();
+    private List<Transaction> filteredDebitTransactions = new();
+
+    private List<string> uniqueTags = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var allTransactions = await TransactionService.GetTransactionsAsync();
+
+        creditTransactions = allTransactions.Where(t => t.TransactionType == TransactionType.Credit).ToList();
+        debitTransactions = allTransactions.Where(t => t.TransactionType == TransactionType.Debit).ToList();
+
+        uniqueTags = allTransactions
+            .Select(t => t.Tag)
+            .Where(tag => !string.IsNullOrEmpty(tag))
+            .Distinct()
+            .ToList();
+
+        ApplyFilters();
+    }
+
+    private void OnTagFilterChange(ChangeEventArgs e)
+    {
+        selectedTag = e.Value?.ToString();
+        ApplyFilters();
+    }
+
+    private void OnSearchInputChange(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString();
+        ApplyFilters();
+    }
+
+    private void OnDateFilterChange(ChangeEventArgs e)
+    {
+        selectedDateFilter = e.Value?.ToString();
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        DateTime today = DateTime.Today;
+        DateTime? startDate = selectedDateFilter switch
+        {
+            "Last3Days" => today.AddDays(-3),
+            "ThisWeek" => today.AddDays(-(int)today.DayOfWeek),
+            "ThisMonth" => new DateTime(today.Year, today.Month, 1),
+            "Past3Months" => today.AddMonths(-3),
+            _ => null // "All"
+        };
+
+        filteredCreditTransactions = creditTransactions
+            .Where(t => (string.IsNullOrEmpty(searchQuery) ||
+                         t.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                         t.Amount.ToString().Contains(searchQuery)) &&
+                        (string.IsNullOrEmpty(selectedTag) || t.Tag == selectedTag) &&
+                        (!startDate.HasValue || t.TransactionDate >= startDate))
+            .ToList();
+
+        filteredDebitTransactions = debitTransactions
+            .Where(t => (string.IsNullOrEmpty(searchQuery) ||
+                         t.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                         t.Amount.ToString().Contains(searchQuery)) &&
+                        (string.IsNullOrEmpty(selectedTag) || t.Tag == selectedTag) &&
+                        (!startDate.HasValue || t.TransactionDate >= startDate))
+            .ToList();
+    }
+
+    private async Task DeleteTransaction(int transactionId)
+    {
+        await TransactionService.DeleteTransactionAsync(transactionId);
+
+        var allTransactions = await TransactionService.GetTransactionsAsync();
+        creditTransactions = allTransactions.Where(t => t.TransactionType == TransactionType.Credit).ToList();
+        debitTransactions = allTransactions.Where(t => t.TransactionType == TransactionType.Debit).ToList();
+
+        uniqueTags = allTransactions
+            .Select(t => t.Tag)
+            .Where(tag => !string.IsNullOrEmpty(tag))
+            .Distinct()
+            .ToList();
+
+        ApplyFilters();
+    }
+}

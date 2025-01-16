@@ -1,5 +1,4 @@
 ﻿using Brello.Models;
-using Brello.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -16,30 +15,25 @@ namespace Brello.Services
             _context = context;
         }
 
-        public async Task<bool> RegisterAsync(string username, string password)
+        public async Task<bool> RegisterAsync(string username, string password, string preferredCurrency)
         {
             try
             {
-                // Check if the username already exists in the database
                 bool userExists = await _context.Users.AnyAsync(u => u.Username == username);
-                Console.WriteLine($"Checking if username exists: {userExists}");
-
                 if (userExists)
                 {
                     return false; // Username already exists
                 }
 
-                // Create a new user and save to the database
-                var user = new User()
+                var user = new User
                 {
                     Username = username,
-                    Password = password // You should ideally hash the password before saving
+                    Password = password,
+                    PreferredCurrency = preferredCurrency
                 };
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
-
-            
 
                 return true; // Registration succeeded
             }
@@ -50,12 +44,29 @@ namespace Brello.Services
             }
         }
 
-
         public async Task<User?> LoginAsync(string username, string password)
         {
             return await _context.Users
                 .Where(u => u.Username == username && u.Password == password)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task<string?> GetPreferredCurrencyAsync(string username)
+        {
+            try
+            {
+                var user = await _context.Users
+                    .Where(u => u.Username == username)
+                    .Select(u => u.PreferredCurrency)
+                    .FirstOrDefaultAsync();
+
+                return user;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetPreferredCurrencyAsync: {ex.Message}");
+                return null;
+            }
         }
     }
 }

@@ -7,6 +7,7 @@
         public string Description { get; set; } = string.Empty;
         public TransactionType TransactionType { get; set; }
         public DateTime TransactionDate { get; set; } = DateTime.Now; // Default to current date
+        public string? Tag { get; set; } // Optional tag property
     }
 
     public enum TransactionType

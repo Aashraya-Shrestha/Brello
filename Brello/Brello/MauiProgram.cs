@@ -23,7 +23,10 @@ namespace Brello
    
             builder.Services.AddSingleton<AuthService>();
             builder.Services.AddSingleton<TransactionService>();
-            
+            builder.Services.AddSingleton<DebtService>();
+         
+
+
 
 
             builder.Services.AddMauiBlazorWebView();

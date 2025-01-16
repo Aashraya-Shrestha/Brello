@@ -1,9 +1,263 @@
-﻿@page "/"
+﻿@page "/home"
 
-<h1>Hello, world!</h1>
+@inject Brello.Services.TransactionService TransactionService
+@inject Brello.Services.DebtService DebtService
+@inject Brello.Services.AuthService AuthService
 
-Welcome to your new app.
+<h3 class="mb-4 text-uppercase">Dashboard</h3>
+<h5 class="text-muted">Preferred Currency: <span class="fw-bold">@PreferredCurrency</span></h5>
 
-<a href="/login">Login</a>
+@if (isLoading)
+{
+    <div class="text-center mt-5 fw-bold">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+            <div class="col">
+                <div class="card shadow-sm border-success">
+                    <div class="card-body text-center">
+                        <h6 class="card-title text-success">Total Credit</h6>
+                        <p class="card-text text-success fw-bold">@TotalCredit.ToString("N2")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card shadow-sm border-danger">
+                    <div class="card-body text-center">
+                        <h6 class="card-title text-danger">Total Debit</h6>
+                        <p class="card-text text-danger fw-bold">@TotalDebit.ToString("N2")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card shadow-sm border-danger">
+                    <div class="card-body text-center">
+                        <h6 class="card-title text-danger">Total Debt</h6>
+                        <p class="card-text text-danger fw-bold">@TotalDebt.ToString("N2")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card shadow-sm border-success">
+                    <div class="card-body text-center">
+                        <h6 class="card-title text-success">Total Paid Debts</h6>
+                        <p class="card-text text-success fw-bold">@TotalPaidDebts.ToString("N2")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card shadow-sm border-danger">
+                    <div class="card-body text-center">
+                        <h6 class="card-title text-danger">Total Pending Debts</h6>
+                        <p class="card-text text-danger fw-bold">@TotalPendingDebts.ToString("N2")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<a href="/transactions">add transaction</a>
+        <div class="row mt-4">
+            <div class="col-md-6">
+            @if (TopTransactions.Any())
+            {
+                        <h4 class="text-center text-uppercase fw-bold mb-3" style="border-bottom: 2px solid #007bff; padding-bottom: 5px; color: #007bff;">
+                            Top 5 Transactions
+                        </h4>
+                        <table class="table table-bordered table-hover mt-2">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                        @foreach (var transaction in TopTransactions)
+                        {
+                                        <tr>
+                                            <td>@transaction.Description</td>
+                                            <td>@transaction.Amount.ToString("N2")</td>
+                                        </tr>
+                        }
+                            </tbody>
+                        </table>
+            }
+            </div>
+
+            <div class="col-md-6">
+            @if (BottomTransactions.Any())
+            {
+                        <h4 class="text-center text-uppercase fw-bold mb-3" style="border-bottom: 2px solid #dc3545; padding-bottom: 5px; color: #dc3545;">
+                            Bottom 5 Transactions
+                        </h4>
+                        <table class="table table-bordered table-hover mt-2">
+                            <thead class="table-danger">
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                        @foreach (var transaction in BottomTransactions)
+                        {
+                                        <tr>
+                                            <td>@transaction.Description</td>
+                                            <td>@transaction.Amount.ToString("N2")</td>
+                                        </tr>
+                        }
+                            </tbody>
+                        </table>
+            }
+            </div>
+        </div>
+
+    @if (FilteredPendingDebts.Any())
+    {
+                <h4 class="mt-4 fw-bold text-uppercase " style="border-bottom: 2px solid #ffc107; padding-bottom: 5px;">
+                    Pending Debts
+                </h4>
+
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-6">
+                        <label for="dateFilter" class="form-label fw-bold">Filter by Due Date:</label>
+                        <select id="dateFilter" class="form-select" @bind="SelectedDateFilter">
+                            <option value="">All</option>
+                            <option value="Next3Days">Next 3 Days</option>
+                            <option value="ThisWeek">This Week</option>
+                            <option value="ThisMonth">This Month</option>
+                            <option value="ThisYear">This Year</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mt-2">
+                        <thead class="table-warning">
+                            <tr>
+                                <th>Source</th>
+                                <th>Amount</th>
+                                <th>Due Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    @foreach (var debt in FilteredPendingDebts)
+                    {
+                                    <tr>
+                                        <td>@debt.Source</td>
+                                        <td>@debt.Amount.ToString("N2")</td>
+                                        <td>@debt.DebtDueDate.ToString("d")</td>
+                                    </tr>
+                    }
+                        </tbody>
+                    </table>
+                </div>
+    }
+}
+
+@code {
+    private decimal TotalCredit { get; set; } = 0;
+    private decimal TotalDebit { get; set; } = 0;
+    private decimal TotalDebt { get; set; } = 0;
+    private decimal TotalPaidDebts { get; set; } = 0;
+    private decimal TotalPendingDebts { get; set; } = 0;
+    private string PreferredCurrency { get; set; } = string.Empty;
+    private bool isLoading = true;
+    private List<Brello.Models.Transaction> TopTransactions { get; set; } = new List<Brello.Models.Transaction>();
+    private List<Brello.Models.Transaction> BottomTransactions { get; set; } = new List<Brello.Models.Transaction>();
+    private List<Brello.Models.Debt> PendingDebts { get; set; } = new List<Brello.Models.Debt>();
+    private List<Brello.Models.Debt> FilteredPendingDebts { get; set; } = new List<Brello.Models.Debt>();
+
+    private string _selectedDateFilter = string.Empty;
+    private string SelectedDateFilter
+    {
+        get => _selectedDateFilter;
+        set
+        {
+            if (_selectedDateFilter != value)
+            {
+                _selectedDateFilter = value;
+                ApplyDateFilter(); // Reapply the filter on change
+            }
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Fetch the user's preferred currency
+            var currentUser = "exampleUsername"; // Replace with actual logic to get the logged-in user's username
+            PreferredCurrency = await AuthService.GetPreferredCurrencyAsync(currentUser) ?? "NRS";
+
+            var transactions = await TransactionService.GetTransactionsAsync();
+            TotalCredit = transactions
+                .Where(t => t.TransactionType == Brello.Models.TransactionType.Credit)
+                .Sum(t => (decimal)t.Amount);
+
+            TotalDebit = transactions
+                .Where(t => t.TransactionType == Brello.Models.TransactionType.Debit)
+                .Sum(t => (decimal)t.Amount);
+
+            var debts = await DebtService.GetDebtsAsync();
+            TotalDebt = debts.Sum(d => d.Amount);
+
+            TotalPaidDebts = debts
+                .Where(d => d.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
+                .Sum(d => d.Amount);
+
+            TotalPendingDebts = debts
+                .Where(d => d.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                .Sum(d => d.Amount);
+
+            PendingDebts = debts
+                .Where(d => d.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(d => d.DebtDueDate)
+                .ToList();
+
+            ApplyDateFilter();
+
+            TopTransactions = transactions.OrderByDescending(t => t.Amount).Take(5).ToList();
+            BottomTransactions = transactions.OrderBy(t => t.Amount).Take(5).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading finance summary: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+
+    private void ApplyDateFilter()
+    {
+        var now = DateTime.Now;
+
+        FilteredPendingDebts = SelectedDateFilter switch
+        {
+            "Next3Days" => PendingDebts.Where(d => d.DebtDueDate.Date >= now.Date && d.DebtDueDate.Date <= now.Date.AddDays(3)).ToList(),
+            "ThisWeek" => PendingDebts.Where(d => d.DebtDueDate.Date >= now.Date.AddDays(-(int)now.DayOfWeek) && d.DebtDueDate.Date <= now.Date.AddDays(7 - (int)now.DayOfWeek)).ToList(),
+            "ThisMonth" => PendingDebts.Where(d => d.DebtDueDate.Month == now.Month && d.DebtDueDate.Year == now.Year).ToList(),
+            "ThisYear" => PendingDebts.Where(d => d.DebtDueDate.Year == now.Year).ToList(),
+            _ => PendingDebts
+        };
+    }
+}
+
+<style>
+    .table-warning {
+        background-color: #ffffff !important; /* Set background to white */
+        color: #000; /* Ensure text color is black */
+    }
+
+    .table-bordered tbody tr:hover {
+        background-color: #f8f9fa; /* Light gray hover effect */
+    }
+
+    .card {
+        background-color: #ffffff; /* Ensure cards have a white background */
+    }
+</style>

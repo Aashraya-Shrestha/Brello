@@ -16,7 +16,7 @@ namespace Brello.Services
         }
 
         // Add a new transaction
-        public async Task AddTransactionAsync(double amount, string description, TransactionType transactionType, DateTime TransactionDate)
+        public async Task AddTransactionAsync(double amount, string description, TransactionType transactionType, DateTime transactionDate, string? tag = null)
         {
             try
             {
@@ -25,8 +25,8 @@ namespace Brello.Services
                     Amount = amount,
                     Description = description,
                     TransactionType = transactionType,
-                    TransactionDate = TransactionDate
-
+                    TransactionDate = transactionDate,
+                    Tag = tag
                 };
                 _context.Transactions.Add(transaction);
                 await _context.SaveChangesAsync();
@@ -36,6 +36,7 @@ namespace Brello.Services
                 Console.WriteLine($"Error adding transaction: {ex.Message}");
             }
         }
+
 
         // Get all transactions
         public async Task<List<Transaction>> GetTransactionsAsync()
